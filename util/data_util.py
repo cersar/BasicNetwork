@@ -17,18 +17,29 @@ def read_json_label(filename):
         return np.asarray(label)
 
 
-def load_data(data_path,mode='test'):
-    image_path = os.path.join(data_path, 'image')
-    file_list = os.listdir(image_path)
+def load_data(path,mode='test'):
+    if len(path) > 1 and os.path.isfile(path[0]):
+        image_dir = ''
+        file_list = path
+        label_dir = os.path.join(os.path.dirname(os.path.dirname(path[0])), 'label')
+    elif os.path.isdir(path):
+        image_dir = os.path.join(path, 'image')
+        file_list = os.listdir(image_dir)
+        label_dir = os.path.join(path,'label')
+    elif os.path.isfile(path):
+        image_dir = ''
+        file_list = [path]
+        label_dir = os.path.join(os.path.dirname(os.path.dirname(path)),'label')
+
     image_data = []
     labels = []
     for file_name in file_list:
         if file_name.endswith('.jpg'):
-            image = cv2.imread(os.path.join(image_path, file_name))
+            image = cv2.imread(os.path.join(image_dir, file_name))
             image_data.append(image)
             if mode=='train':
                 label_filename = os.path.splitext(file_name)[0] + '.json'
-                label = read_json_label(os.path.join(data_path,'label',label_filename))
+                label = read_json_label(os.path.join(label_dir,label_filename))
                 labels.append(label)
     if mode == 'train':
         return image_data,labels

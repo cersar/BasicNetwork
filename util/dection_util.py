@@ -60,4 +60,5 @@ def draw_dection(image,results,labels):
         cv2.rectangle(image,(left, top), (right, bottom),(0,255,0), thickness)
         cv2.putText(image, title, text_origin,0, 1e-3 * ih, (255,0,0), thickness // 3)
     cv2.imshow('',image)
-    cv2.waitKey(0)
+    cv2.waitKey(1000)
+    cv2.destroyAllWindows()

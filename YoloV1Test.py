@@ -7,4 +7,5 @@ voc_labels = ["aeroplane", "bicycle", "bird", "boat", "bottle",
     "train", "tvmonitor"]
 
 net = YoloV1((448, 448, 3))
-dection(net,'dataset/yolo_test_data',voc_labels,r'model_saved/yolov1/model.ckpt')
+file_list = ['dataset/yolo_test_data/image/bicycle.jpg','dataset/yolo_test_data/image/car.jpg']
+dection(net,file_list,voc_labels,r'model_saved/yolov1/model.ckpt')

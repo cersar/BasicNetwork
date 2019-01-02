@@ -4,13 +4,13 @@ from util.data_util import load_data,preprocess_data
 import time
 
 
-def dection(net,image_path,labels,weights_file):
+def dection(net,path,labels,weights_file):
     with net.as_default():
         saver = tf.train.Saver()
         with tf.Session() as sess:
             saver.restore(sess, weights_file)
             start = time.time()
-            image_data = load_data(image_path)
+            image_data = load_data(path)
             X = preprocess_data(image_data)
             end = time.time()
             print("image load time {:.2f}".format(end - start))
