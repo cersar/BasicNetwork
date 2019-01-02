@@ -21,7 +21,7 @@ def dection(net,image_path,labels,weights_file):
             end1 = time.time()
             print("forward time {:.2f}".format(end1 - start1))
             start2 = time.time()
-            show_dection(image_data, probes, confs, boxes_cord,labels,threshold=0.5)
+            show_dection(image_data, probes, confs, boxes_cord,labels)
             end2 = time.time()
             print("show dection time {:.2f}".format(end2 - start2))
             end = time.time()

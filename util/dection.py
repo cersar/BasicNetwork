@@ -5,28 +5,35 @@ import time
 import cv2
 
 
-def process_predict(probs, confs, boxes, threshold,image_size):
+def process_predict(probs, confs, boxes, image_size,score_threshold=0.5,iou_threshold=0.2,max_boxes_num=10):
     size_total,class_num = probs.shape
-    box_num = confs.shape[-1]
 
     cls = np.argmax(probs,axis=-1)
-    probs_final = confs*(np.max(probs,axis=-1).reshape(-1,1))
-    inds = tf.image.non_max_suppression(boxes.reshape((size_total*box_num,4)),probs_final.reshape((size_total*box_num)),
-                                        10,iou_threshold=0.3,score_threshold=threshold).eval()
+    probs_final = confs * (np.max(probs, axis=-1).reshape(-1, 1))
+
+    D = {i: [] for i in list(range(class_num))}
+    for ind,c in enumerate(cls):
+        D[c].append(ind)
+
     results = []
-    for ind in inds:
-        i = ind//box_num
-        j = ind%box_num
-        left, right, top, bot = rescale_box(boxes[i, j], image_size)
-        results.append([cls[i], probs_final[i,j], left, right, top, bot])
+    for c,inds in D.items():
+        if len(inds) == 0:
+            continue
+        boxes_cls = boxes[inds,...].reshape((-1, 4))
+        probs_cls = np.squeeze(probs_final[inds, ...].reshape((-1, 1)))
+        nms_inds = tf.image.non_max_suppression(boxes_cls, probs_cls, max_boxes_num,
+                                                iou_threshold=iou_threshold, score_threshold=score_threshold).eval()
+        for ind in nms_inds:
+            left, right, top, bottom = rescale_box(boxes_cls[ind], image_size)
+            results.append([c, probs_cls[ind], left, right, top, bottom])
 
     return results
 
 
-def show_dection(image_data, probes, confs, boxes_cord,labels,threshold=0.3):
+def show_dection(image_data, probes, confs, boxes_cord,labels):
     boxes = yolo_boxes_to_corners(boxes_cord, int(np.sqrt(probes.shape[1]))).eval()
     for i in range(len(image_data)):
-        result = process_predict(probes[i], confs[i], boxes[i], threshold, image_data[i].shape)
+        result = process_predict(probes[i], confs[i], boxes[i],image_data[i].shape)
         start = time.time()
         draw_dection(image_data[i], result,labels)
         end = time.time()
