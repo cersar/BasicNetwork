@@ -1,5 +1,6 @@
 import tensorflow as tf
 from util.process_box import compute_IOU
+import numpy as np
 
 
 def YoloV1(input_shape,class_num=20,box_num=2):
@@ -54,9 +55,9 @@ def YoloV1(input_shape,class_num=20,box_num=2):
         dense2 = tf.layers.dense(dropout, output_shape, activation=None)
         y = tf.placeholder(tf.float32, shape=(None, int(conv24.shape[1])**2, 1+4+class_num), name='y')
 
-        probes, confs, boxes_cord = predict_layer(dense2,class_num,conv24.shape[1],box_num)
+        probes, confs, boxes = predict_layer(dense2,class_num,conv24.shape[1],box_num)
 
-        y_hat = (probes, confs, boxes_cord)
+        y_hat = (probes, confs, boxes)
         loss = compute_loss(y,y_hat)
 
         net.add_to_collection('input', {'x': x, 'y': y})
@@ -66,6 +67,22 @@ def YoloV1(input_shape,class_num=20,box_num=2):
         return net
 
 
+def pred_cord_to_box(boxes_pred,size):
+    """Convert YOLOv1 box predictions to bounding box cords(x,y,w,h)."""
+    ind = np.reshape(np.asarray(range(size ** 2), dtype=np.float32), (1, size ** 2, 1, 1))
+    boxes_x = (boxes_pred[..., 0:1] + ind % size) / size
+    boxes_y = (boxes_pred[..., 1:2] + ind // size) / size
+    boxes_w = boxes_pred[..., 2:3] ** 2
+    boxes_h = boxes_pred[..., 3:4] ** 2
+    boxes = tf.concat((
+        boxes_x,
+        boxes_y,
+        boxes_w,
+        boxes_h
+    ), axis=-1)
+    return boxes
+
+
 def predict_layer(net_out,num_class,size,box_num):
     size = int(size)
     size_total = pow(size,2)
@@ -73,9 +90,10 @@ def predict_layer(net_out,num_class,size,box_num):
     conf_size = size_total*box_num
     probs = tf.reshape(net_out[:, 0:probe_size],(-1,size_total,num_class))
     confs = tf.reshape(net_out[:, probe_size:probe_size+conf_size],(-1,size_total,box_num))
-    boxes_cord = tf.reshape(net_out[:, probe_size+conf_size:],(-1,size_total,box_num,4))
+    boxes_pred = tf.reshape(net_out[:, probe_size+conf_size:],(-1,size_total,box_num,4))
+    boxes = pred_cord_to_box(boxes_pred,size)
 
-    return probs,confs,boxes_cord
+    return probs,confs,boxes
 
 
 def compute_loss(y_true,y_hat,lambd_coord=5,lambd_nonObj=.5):

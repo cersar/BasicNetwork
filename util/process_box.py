@@ -11,29 +11,29 @@ def compute_area(boxes):
     return overlap_area
 
 
-def compute_IOU(boxes_coord_true,boxes_coord_hat,eplson=1e-6):
-    size = int(np.sqrt(int(boxes_coord_true.shape[1])))
-    boxes_true = yolo_boxes_to_corners(boxes_coord_true,size)
+def compute_IOU(boxes_true,boxes_hat,eplson=1e-6):
+    boxes_true = yolo_boxes_to_corners(boxes_true)
     boxes_true = tf.concat([boxes_true,boxes_true],axis=-2)
 
-    boxes_hat = yolo_boxes_to_corners(boxes_coord_hat, size)
+    boxes_hat = yolo_boxes_to_corners(boxes_hat)
     overlap_top = tf.expand_dims(tf.reduce_max(tf.concat([boxes_true[...,0:1],boxes_hat[...,0:1]],axis=-1),axis=-1),axis=-1)
     overlap_left = tf.expand_dims(tf.reduce_max(tf.concat([boxes_true[..., 1:2], boxes_hat[..., 1:2]], axis=-1),axis=-1),axis=-1)
     overlap_bottom = tf.expand_dims(tf.reduce_min(tf.concat([boxes_true[..., 2:3], boxes_hat[..., 2:3]], axis=-1),axis=-1),axis=-1)
     overlap_right = tf.expand_dims(tf.reduce_min(tf.concat([boxes_true[..., 3:4], boxes_hat[..., 3:4]], axis=-1),axis=-1),axis=-1)
     boxes_overlap = tf.concat([overlap_top,overlap_left,overlap_bottom,overlap_right],axis=-1)
 
-    boxes_true_area =  compute_area(boxes_true)
+    boxes_true_area = compute_area(boxes_true)
     boxes_hat_area = compute_area(boxes_hat)
     overlap_area = compute_area(boxes_overlap)
     IOU = overlap_area/(boxes_true_area+boxes_hat_area-overlap_area+eplson)
     return IOU
 
 
-def corner_to_yolo_box(box,image_size):
+def corner_to_yolo_box(box,image_size,output_size):
+    '''lable的(left,top,right,bottom)格式转为yolo的(x,y,w,h)格式，其中(x,y,w,h)为相对于原图像的比例'''
     iw,ih = image_size
-    frame_w = iw / 7
-    frame_h = ih / 7
+    frame_w = iw / output_size[0]
+    frame_h = ih / output_size[1]
     left = box[0]
     top = box[1]
     right = box[2]
@@ -41,23 +41,22 @@ def corner_to_yolo_box(box,image_size):
 
     x = (left+right)/2.0
     frame_x = int(x/frame_w)
-    delta_x = (x-frame_x*frame_w)/frame_w
+    x = x/iw
     y = (top + bottom) / 2.0
     frame_y = int(y / frame_h)
-    delta_y = (y - frame_y * frame_h)/frame_h
+    y = y/ih
     w = np.sqrt((right-left)/iw)
     h = np.sqrt((bottom-top)/ih)
-    yolo_box = [delta_x,delta_y,w,h]
+    yolo_box = [x,y,w,h]
     return yolo_box,frame_x,frame_y
 
 
-def yolo_boxes_to_corners(boxes_cord,size):
+def yolo_boxes_to_corners(boxes):
     """Convert YOLO box predictions to bounding box corners."""
-    ind = np.reshape(np.asarray(range(size**2), dtype=np.float32), (1, size**2,1,1))
-    boxes_x = (boxes_cord[..., 0:1] + ind % size) / size
-    boxes_y = (boxes_cord[..., 1:2] + ind // size) / size
-    boxes_w = boxes_cord[..., 2:3] ** 2
-    boxes_h = boxes_cord[..., 3:4] ** 2
+    boxes_x = boxes[..., 0:1]
+    boxes_y = boxes[..., 1:2]
+    boxes_w = boxes[..., 2:3]
+    boxes_h = boxes[..., 3:4]
     left = boxes_x - boxes_w / 2.
     top = boxes_y - boxes_h / 2.
     right = boxes_x + boxes_w / 2.

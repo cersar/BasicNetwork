@@ -53,13 +53,13 @@ def to_one_hot(label,num_class):
     return one_hot_label
 
 
-def preprocess_label(label,num_class,image_size):
+def preprocess_label(label,num_class,image_size,output_size):
     labels = np.zeros((49,5+num_class))
     for obj in label:
         cls = obj[0]
         box = obj[1:]
         one_hot_label = to_one_hot(cls,num_class)
-        yolo_box,frame_x,frame_y = corner_to_yolo_box(box, image_size)
+        yolo_box,frame_x,frame_y = corner_to_yolo_box(box, image_size,output_size)
         ind = frame_y*7+frame_x
         labels[ind, 0] = 1
         labels[ind, 1:5] = yolo_box
@@ -67,16 +67,17 @@ def preprocess_label(label,num_class,image_size):
     return labels
 
 
-def preprocess_data(images,labels=None,target_size=(448,448),num_class=20,mode='test'):
+def preprocess_data(images,labels=None,target_size=(448,448),output_size=(7,7),num_class=20,mode='test'):
     image_num = len(images)
-    image_data = np.zeros((image_num,448,448,3))
+    w,h = target_size
+    image_data = np.zeros((image_num,w,h,3))
     if mode == 'train':
         y_true = np.zeros((image_num,49,5+num_class))
     for i in range(image_num):
         ih,iw,_=images[i].shape
         image_data[i] = cv2.resize(images[i], target_size, interpolation=cv2.INTER_CUBIC)/255.
         if mode == 'train':
-            y_true[i] = preprocess_label(labels[i], num_class, (iw,ih))
+            y_true[i] = preprocess_label(labels[i], num_class, (iw,ih),output_size)
     if mode == 'train':
         return image_data,y_true
     else:
